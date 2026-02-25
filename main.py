@@ -7,6 +7,7 @@ from communication import SerialReceiver
 # ==========================================
 # 設定
 # ==========================================
+# テスト用の基準点 (A4用紙サイズを想定)
 FIELD_POINTS = np.array([
     [0.0, 0.0, 0.0],
     [0.297, 0.0, 0.0],
@@ -15,6 +16,7 @@ FIELD_POINTS = np.array([
 ], dtype=np.float32)
 
 def get_ray(u, v, K, R, tvec):
+    """ピクセル座標(u,v)から3D空間の視線ベクトル（レイ）を計算"""
     pt_2d = np.array([[[u, v]]], dtype=np.float32)
     undistorted = cv2.undistortPoints(pt_2d, K, None)
     dir_cam = np.array([undistorted[0][0][0], undistorted[0][0][1], 1.0])
@@ -23,25 +25,30 @@ def get_ray(u, v, K, R, tvec):
     dir_world /= np.linalg.norm(dir_world)
     return cam_pos, dir_world.flatten()
 
+# ==========================================
+# メイン処理
+# ==========================================
 if __name__ == "__main__":
     print("システムを起動中...")
 
-    cam = CameraTracker(camera_id=1)
+    # 1. カメラの初期化 (1080p指定)
+    cam = CameraTracker(camera_id=0, width=1920, height=1080)
     
+    # 2. 通信モジュールの初期化 (0.05m〜0.4mの間を動くダミーデータ)
     comm = SerialReceiver(
         port="COM3", 
         baudrate=115200, 
         mock_mode=True, 
         mock_min_z=0.05, 
-        mock_max_z=0.4, 
-        mock_speed=1.0,
+        mock_max_z=0.40, 
+        mock_speed=1.5
     )
     comm.start()
 
     K = cam.get_approx_camera_matrix()
     points_2d = []
 
-    # ★ここがポイント：WINDOW_NORMALを指定すると、画像サイズはそのままにウィンドウを自由に変形できます
+    # ウィンドウを自由にリサイズできる設定
     cv2.namedWindow("Camera", cv2.WINDOW_NORMAL)
     
     def click_calib(event, x, y, flags, param):
@@ -61,10 +68,9 @@ if __name__ == "__main__":
             cv2.circle(display, tuple(p), 5, (0,0,255), -1)
             cv2.putText(display, str(i+1), (p[0]+10, p[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255), 2)
         
-        # 縮小処理をなくし、そのまま表示（ウィンドウの端を引っ張ってサイズ調整してください）
         cv2.imshow("Camera", display)
         
-        if cv2.waitKey(1) == 13 and len(points_2d) == 4:
+        if cv2.waitKey(1) == 13 and len(points_2d) == 4: # Enterキーで確定
             break
 
     success, rvec, tvec = cv2.solvePnP(FIELD_POINTS, np.array(points_2d, dtype=np.float32), K, None)
@@ -92,10 +98,12 @@ if __name__ == "__main__":
                 P = O + t * D
                 
                 text = f"X:{P[0]:.2f}, Y:{P[1]:.2f}, Z:{current_z:.2f}m"
-                cv2.putText(frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
+                # 解像度が上がったので、文字サイズ(2.0)と太さ(4)を大きくしました
+                cv2.putText(frame, text, (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 255, 255), 4)
 
                 ax.cla()
-                max_range = max(1.0, current_z + 1.0)
+                # Z軸の高さが低いため、スケールを小さく(約0.5m)固定して見やすくする
+                max_range = max(0.5, current_z + 0.2)
                 ax.set_box_aspect((1, 1, 1))
                 ax.set_xlim(-max_range/2, max_range/2)
                 ax.set_ylim(-max_range/2, max_range/2)
@@ -108,7 +116,7 @@ if __name__ == "__main__":
                 
                 ax.scatter(*O, color='red', s=100, label="Camera")
                 ax.plot([O[0], P[0]], [O[1], P[1]], [O[2], P[2]], color='orange', linestyle='--')
-                ax.scatter(*P, color='green', s=100, label=f"Airplane (Z={current_z:.1f}m)")
+                ax.scatter(*P, color='green', s=100, label=f"Airplane (Z={current_z:.2f}m)")
                 
                 ax.set_xlabel('X')
                 ax.set_ylabel('Y')

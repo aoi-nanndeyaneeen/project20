@@ -2,13 +2,19 @@ import cv2
 import numpy as np
 
 class CameraTracker:
-    def __init__(self, camera_id=1):
-        """カメラの初期化（解像度強制なし・安定重視）"""
+    def __init__(self, camera_id=0, width=1920, height=1080):
+        """カメラの初期化（1080p高画質設定）"""
         self.cap = cv2.VideoCapture(camera_id)
         
+        # 1080pとMJPGフォーマットを要求（USB3.0の帯域を活かして高画質・高FPSを出すため）
+        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+
+        # 実際の解像度を確認
         actual_w = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
         actual_h = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-        print(f"[Camera] 初期化完了: 解像度 {actual_w} x {actual_h}")
+        print(f"[Camera] 初期化完了: 要求 {width}x{height} -> 実際 {actual_w} x {actual_h}")
 
         self.width = int(actual_w)
         self.height = int(actual_h)
@@ -37,7 +43,7 @@ class CameraTracker:
         
         center_uv = None
         
-        # 背景（prev_gray）が空の場合、float32型に変換して初期化する
+        # 背景（prev_gray）が空の場合、float32型に変換して初期化する（エラー対策）
         if self.prev_gray is None:
             self.prev_gray = np.float32(gray_blurred)
         else:
