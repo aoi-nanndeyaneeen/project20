@@ -151,12 +151,13 @@ if __name__ == "__main__":
         R, _ = cv2.Rodrigues(rvec)
 
         plt.ion()
+        global fig, ax
         fig = plt.figure(figsize=(8, 8))
         ax = fig.add_subplot(111, projection='3d')
 
         def ensure_plot():
             """matplotlibウィンドウが閉じられていたら再生成"""
-            nonlocal fig, ax
+            global fig, ax
             if not plt.fignum_exists(fig.number):
                 fig = plt.figure(figsize=(8, 8))
                 ax = fig.add_subplot(111, projection='3d')
@@ -207,38 +208,53 @@ if __name__ == "__main__":
                                     cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 255, 255), 4)
 
                         ax.cla()
-                        ensure_plot()  # ウィンドウ死活確認
-                        max_range = max(0.5, abs(current_z) + 0.2)
-                        ax.set_box_aspect((1, 1, 1))
-                        ax.set_xlim(-max_range / 2, max_range / 2)
-                        ax.set_ylim(-max_range / 2, max_range / 2)
-                        ax.set_zlim(0, max_range)
+                        ensure_plot()
+                        
+                        # 描画範囲の設定
+                        side = 1.0
+                        ax.set_xlim(-side, side)
+                        ax.set_ylim(-side, side)
+                        ax.set_zlim(0, side * 1.5)
+                        ax.set_box_aspect((1, 1, 1.5))
 
+                        # フィールドの描画
                         xs = np.append(FIELD_POINTS[:, 0], FIELD_POINTS[0, 0])
                         ys = np.append(FIELD_POINTS[:, 1], FIELD_POINTS[0, 1])
                         zs = np.append(FIELD_POINTS[:, 2], FIELD_POINTS[0, 2])
-                        ax.plot(xs, ys, zs, color='blue', label="Ground")
-                        ax.scatter(*O, color='red', s=100, label="Camera")
-                        ax.plot([O[0], P[0]], [O[1], P[1]], [O[2], P[2]],
-                                color='orange', linestyle='--')
-                        ax.scatter(*P, color='green', s=100,
-                                   label=f"Target (Z={current_z:.2f}m)")
+                        ax.plot(xs, ys, zs, color='gray', alpha=0.5, label="Field")
 
-                        # 傾き矢印（機体の上方向ベクトルをroll/pitchで回転して表示）
-                        arrow_len = max_range * 0.3
-                        pr, pp = np.radians(roll), np.radians(pitch)
-                        up = np.array([
-                            np.sin(pp),
-                            -np.sin(pr) * np.cos(pp),
-                            np.cos(pr) * np.cos(pp)
-                        ]) * arrow_len
-                        ax.quiver(P[0], P[1], P[2],
-                                  up[0], up[1], up[2],
-                                  color='magenta', linewidth=2,
-                                  label=f"R:{roll:.1f}° P:{pitch:.1f}°")
+                        # カメラ位置
+                        ax.scatter(*O, color='red', s=50, label="Camera")
 
-                        ax.set_xlabel('X'); ax.set_ylabel('Y'); ax.set_zlabel('Z')
-                        ax.legend(fontsize=7)
+                        # 飛行機の描画 (簡易的な十字＋尾翼)
+                        def draw_plane(pos, r, p, y, scale=0.1):
+                            # ローカル座標系でのパーツ定義
+                            # 胴体(X軸方向), 翼(Y軸方向)
+                            body = np.array([[-1, 0, 0], [1, 0, 0]]) * scale
+                            wing = np.array([[0, -1.2, 0], [0, 1.2, 0]]) * scale
+                            tail = np.array([[-0.8, -0.4, 0], [-0.8, 0.4, 0]]) * scale
+                            vert = np.array([[-0.8, 0, 0], [-0.8, 0, 0.4]]) * scale
+
+                            # 回転行列の作成 (yaw -> pitch -> roll)
+                            def get_R(r_deg, p_deg, y_deg):
+                                r, p, y = np.radians(r_deg), np.radians(p_deg), np.radians(y_deg)
+                                Rx = np.array([[1,0,0],[0,np.cos(r),-np.sin(r)],[0,np.sin(r),np.cos(r)]])
+                                Ry = np.array([[np.cos(p),0,np.sin(p)],[0,1,0],[-np.sin(p),0,np.cos(p)]])
+                                Rz = np.array([[np.cos(y),-np.sin(y),0],[np.sin(y),np.cos(y),0],[0,0,1]])
+                                return Rz @ Ry @ Rx
+
+                            R_plane = get_R(r, p, y)
+                            
+                            for part, color in [(body, 'blue'), (wing, 'blue'), (tail, 'red'), (vert, 'red')]:
+                                pts = (R_plane @ part.T).T + pos
+                                ax.plot(pts[:,0], pts[:,1], pts[:,2], color=color, linewidth=3)
+
+                        _, _, yaw = alt_sensor.get_angles()
+                        draw_plane(P, roll, pitch, yaw)
+
+                        ax.set_xlabel('X(m)'); ax.set_ylabel('Y(m)'); ax.set_zlabel('Z(m)')
+                        ax.set_title(f"3D Live View\nAlt: {current_z:.2f}m")
+                        
                         try:
                             plt.draw()
                             plt.pause(0.001)

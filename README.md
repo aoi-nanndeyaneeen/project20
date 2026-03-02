@@ -17,7 +17,30 @@
 3. **Position Estimator (PC側 - Python 3.x)**
    * 一眼レフカメラの映像から動体検知を用いて機体の画面内座標(2D)を追跡。
    * OpenCV (`solvePnP`) を用いたカメラキャリブレーションと射影変換による方向ベクトルの算出。
-   * 受信機(RP2040)から取得した高度(Z)と方向ベクトルを交差させ、3D空間上の絶対座標(X, Y, Z)をリアルタイムに計算・描画。
+   * 受信機(RP2040)から取得した高度(Z)と角度を交差させ、3D空間上の絶対座標(X, Y, Z)をリアルタイムに計算・描画。
+
+## 🛠️ セットアップ (Setup)
+
+### 1. 依存ライブラリのインストール
+PC側で以下のコマンドを実行してください。
+```bash
+pip install opencv-python pyserial matplotlib numpy pandas
+```
+
+## 🔌 接続構成 (Hardware Connections)
+
+### Flight Controller (Teensy 4.0)
+* **MPU6050 (I2C)**: 
+    * SDA -> Pin 18, SCL -> Pin 19
+* **BMP280 (I2C)**: 
+    * SDA -> Pin 18, SCL -> Pin 19
+* **IM920SL (UART)**: 
+    * TX -> Pin 14 (Serial3 TX), RX -> Pin 15 (Serial3 RX)
+
+### Ground Receiver (RP2040 / Raspberry Pi Pico)
+* **IM920SL (UART)**: 
+    * 近傍のUARTピン（C++コード上で `Serial1` を使用）に接続。
+    * TX/RX をクロスで接続。
 
 ## 📁 ディレクトリ構成
 
