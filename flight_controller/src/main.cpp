@@ -85,9 +85,9 @@ void loop() {
     if (counter % 100 == 0) {
             // 気圧センサ更新と通信パケット準備
         barometer.update();
-        Plane_Data.ax = MPU.getRoll();
-        Plane_Data.ay = MPU.getPitch();
-        Plane_Data.az = MPU.getYaw();
+        Plane_Data.ax = MPU.getRoll();//ax:ｘ軸の角度
+        Plane_Data.ay = MPU.getPitch();//ay:yの
+        Plane_Data.az = MPU.getYaw();//az:zの
         Plane_Data.gx = MPU.getGyroX();
         Plane_Data.gy = MPU.getGyroY();
         Plane_Data.gz = MPU.getGyroZ();

@@ -1,60 +1,61 @@
-import pandas as pd
+import csv
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 
-# 1. データの読み込み（同じディレクトリにあるCSVファイルを指定）
-file_path = '3d_tracking_log.csv'
-df = pd.read_csv(file_path)
+# ★ 読み込むCSVファイル名に合わせて変更してください
+FILENAME = "flight_data_20260304_143655.csv"
 
-# 2. 'Time'列を日時型（datetime型）に変換
-# 形式: 時:分:秒.ミリ秒
-df['Time'] = pd.to_datetime(df['Time'], format='%H:%M:%S.%f')
+times = []
+roll, pitch, yaw = [], [], []
+alt = []
 
-# 3. グラフの描画領域を作成
-# 左側に時間ごとの各座標のグラフ、右側に3D軌跡のグラフを配置します
-fig = plt.figure(figsize=(15, 8))
-fig.suptitle('3D Tracking Data Analysis', fontsize=16)
+print(f"{FILENAME} を読み込んでいます...")
 
-# --- 左側: 時間ごとのX, Y, Z座標の変化 ---
-# サブプロットの配置 (行, 列, インデックス)
-ax1 = fig.add_subplot(3, 2, 1)
-ax1.plot(df['Time'], df['Target_X(m)'], color='tab:red', label='X(m)')
-ax1.set_ylabel('X (m)')
-ax1.grid(True, linestyle='--', alpha=0.7)
-ax1.legend()
+try:
+    with open(FILENAME, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            # データの読み込み
+            times.append(row['Time'])
+            roll.append(float(row['Roll_X(deg)']))
+            pitch.append(float(row['Pitch_Y(deg)']))
+            yaw.append(float(row['Yaw_Z(deg)']))
+            alt.append(float(row['Altitude(m)']))
 
-ax2 = fig.add_subplot(3, 2, 3, sharex=ax1)
-ax2.plot(df['Time'], df['Target_Y(m)'], color='tab:green', label='Y(m)')
-ax2.set_ylabel('Y (m)')
-ax2.grid(True, linestyle='--', alpha=0.7)
-ax2.legend()
+    # === グラフの描画設定 ===
+    fig, (ax_acc, ax_alt) = plt.subplots(2, 1, figsize=(12, 8))
+    fig.canvas.manager.set_window_title('Flight Data Analysis')
 
-ax3 = fig.add_subplot(3, 2, 5, sharex=ax1)
-ax3.plot(df['Time'], df['Target_Z(m)'], color='tab:blue', label='Z(m)')
-ax3.set_ylabel('Z (m)')
-ax3.set_xlabel('Time (MM:SS)')
-ax3.grid(True, linestyle='--', alpha=0.7)
-ax3.legend()
+    # X軸のラベル（時間）が多すぎると重なるので、適度に間引くためのインデックス
+    x_indices = range(len(times))
 
-# X軸の時刻フォーマットを「分:秒」に整える
-ax3.xaxis.set_major_formatter(mdates.DateFormatter('%M:%S'))
-plt.setp(ax1.get_xticklabels(), visible=False) # ax1のX軸ラベルを非表示
-plt.setp(ax2.get_xticklabels(), visible=False) # ax2のX軸ラベルを非表示
+    # --- 上段：姿勢（角度）グラフ ---
+    ax_acc.plot(x_indices, roll, label="Roll (X)", color="#FF5733", linewidth=2)
+    ax_acc.plot(x_indices, pitch, label="Pitch (Y)", color="#33FF57", linewidth=2)
+    ax_acc.plot(x_indices, yaw, label="Yaw (Z)", color="#3357FF", linewidth=2)
+    
+    ax_acc.set_title("Attitude Angles (Roll / Pitch / Yaw)", fontsize=14)
+    ax_acc.set_ylabel("Degrees (°)", fontsize=12)
+    ax_acc.grid(True, linestyle='--', alpha=0.7)
+    ax_acc.legend(loc="upper right")
+    # 0度のラインを強調
+    ax_acc.axhline(0, color='black', linewidth=1, linestyle='-')
 
-# --- 右側: 3Dでの移動軌跡 ---
-ax4 = fig.add_subplot(1, 2, 2, projection='3d')
-ax4.plot(df['Target_X(m)'], df['Target_Y(m)'], df['Target_Z(m)'], color='purple', linewidth=2, label='Trajectory')
-# 開始点と終了点を強調
-ax4.scatter(df['Target_X(m)'].iloc[0], df['Target_Y(m)'].iloc[0], df['Target_Z(m)'].iloc[0], color='blue', s=50, label='Start')
-ax4.scatter(df['Target_X(m)'].iloc[-1], df['Target_Y(m)'].iloc[-1], df['Target_Z(m)'].iloc[-1], color='red', s=50, label='End')
+    # --- 下段：高度グラフ ---
+    ax_alt.plot(x_indices, alt, label="Altitude", color="purple", linewidth=2)
+    
+    ax_alt.set_title("Relative Altitude", fontsize=14)
+    ax_alt.set_ylabel("Meters (m)", fontsize=12)
+    ax_alt.set_xlabel("Data Points (Time ->)", fontsize=12)
+    ax_alt.grid(True, linestyle='--', alpha=0.7)
+    ax_alt.legend(loc="upper right")
+    # 0mのラインを強調
+    ax_alt.axhline(0, color='black', linewidth=1, linestyle='-')
 
-ax4.set_xlabel('X (m)')
-ax4.set_ylabel('Y (m)')
-ax4.set_zlabel('Z (m)')
-ax4.set_title('3D Trajectory')
-ax4.legend()
+    plt.tight_layout()
+    print("グラフを描画しました！ウィンドウ下部の虫眼鏡マークで拡大できます。")
+    plt.show()
 
-# 4. レイアウトを調整して表示
-plt.tight_layout()
-plt.subplots_adjust(top=0.92) # タイトルとの被りを防ぐ
-plt.show()
+except FileNotFoundError:
+    print(f"エラー: '{FILENAME}' が見つかりません。ファイル名が正しいか確認してください。")
+except Exception as e:
+    print(f"エラーが発生しました: {e}")
