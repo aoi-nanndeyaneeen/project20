@@ -11,6 +11,7 @@ import threading
 
 from camera import CameraTracker
 from communication import SerialReceiver
+from visualizer import Visualizer3D
 
 # ==========================================
 # 設定
