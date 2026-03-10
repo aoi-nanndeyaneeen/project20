@@ -49,10 +49,18 @@ pip install opencv-python pyserial matplotlib numpy pandas
 ├── flight_controller/   # 機体側プログラム (PlatformIO / C++)
 ├── ground_receiver/     # 地上側プログラム (PlatformIO / C++)
 └── position_estimator/  # PC側プログラム (Python)
-    ├── main.py          # メイン実行ファイル
-    ├── camera.py        # カメラ制御・動体検知モジュール
-    ├── communication.py # シリアル通信モジュール
-    └── graph.py         # ログデータ分析・グラフ化
+    ├── src/                 # メインソースコード
+    │   ├── main.py          # メイン実行ファイル
+    │   ├── camera.py        # カメラ制御・動体検知モジュール
+    │   ├── communication.py # シリアル通信モジュール
+    │   └── visualizer.py    # 3D描画・可視化モジュール
+    ├── tools/               # ユーティリティ・テスト用スクリプト群
+    │   ├── find_camera.py   # 接続されているカメラのIDを探すツール
+    │   ├── receiver.py      # 通信テスト用スクリプト
+    │   ├── sensor_receiver.py # センサデータ受信テスト用
+    │   └── test.py          # トラッキング・各種テスト用
+    ├── logs/                # トラッキングデータなどのログ保存先
+    └── graph.py             # ログデータ分析・グラフ化
 \`\`\`
 
 ## 🚀 使い方 (How to Use)
